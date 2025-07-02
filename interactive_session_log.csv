@@ -1,0 +1,3 @@
+timestamp,round,multiplier,crash_time,duration_seconds,phase,compensation
+2025-07-02T14:01:28.469642,1,1.21,2025-07-02T14:01:31.219122,2.74948,catastrophic,False
+2025-07-02T14:01:41.400153,2,1.87,2025-07-02T14:01:44.973502,3.573349,catastrophic,False
