@@ -98,7 +98,37 @@ The application consists of a prediction engine that generates crash forecasts b
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+- July 02, 2025: Added multilingual support (English/French) with comprehensive language switching
+- July 02, 2025: Restored configuration options with Config tab for simulation parameters
+- July 02, 2025: Enhanced responsive design with mobile-friendly CSS styling
+- July 02, 2025: Integrated feedback system directly into Predictions tab (removed separate Feedback tab)
+- July 02, 2025: Added precise time display with HH:MM:SS format for better readability
+- July 02, 2025: Implemented live phase analysis with manual override controls
+
+## Key Features
+
+### Multilingual Support
+- Full English/French language switching via sidebar selector
+- All interface text, buttons, labels, and messages translate dynamically
+- Language preference stored in session state for consistency
+
+### Configuration System
+- Dedicated Config tab for adjusting simulation parameters
+- Save/Reset functionality for configuration management
+- Real-time parameter updates to the simulation engine
+
+### Responsive Design
+- Mobile-friendly layout with adaptive padding and columns
+- Monospace fonts for time displays ensuring precise readability
+- CSS media queries for optimal viewing on all screen sizes
+
+### Phase Analysis
+- Live current phase detection (hour, quarter, minute patterns)
+- Manual override controls for market condition adjustments
+- Real-time time tracking with seconds precision
+
 ## Changelog
 
-Changelog:
-- July 02, 2025. Initial setup
+- July 02, 2025: Initial setup with multilingual and configuration features
