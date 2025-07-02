@@ -2,9 +2,9 @@
 
 ## Overview
 
-This is a real-time crash multiplier simulation dashboard built with Streamlit. The application simulates a crash game where multipliers increase over time until they "crash" at random intervals. The system provides comprehensive analytics, real-time visualization, and historical data tracking for simulation results.
+This is a crash multiplier prediction dashboard built with Streamlit. The application generates crash predictions based on complex time-based algorithms and learns from real crash data feedback to improve accuracy over time. The system focuses on prediction generation and feedback collection rather than real-time simulation.
 
-The application consists of a simulation engine that generates crash events based on complex time-based rules, a data management system for persistence, and an interactive dashboard for visualization and analysis.
+The application consists of a prediction engine that generates crash forecasts based on time-based rules, a feedback system for collecting real crash data, and an interactive dashboard for prediction management and analysis.
 
 ## System Architecture
 

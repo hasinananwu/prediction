@@ -56,53 +56,28 @@ if not st.session_state.simulator.callbacks:
 st.title("🎯 Crash Simulation Dashboard")
 st.markdown("Real-time crash multiplier simulation with advanced analytics")
 
-# Sidebar controls
+# Sidebar - Prediction Controls
 with st.sidebar:
-    st.header("🎮 Simulation Controls")
+    st.header("🎯 Crash Predictor")
+    st.info("Generate predictions from launch time and provide real crash data feedback to improve accuracy.")
     
-    # Control buttons
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("▶️ Start", disabled=st.session_state.simulator.is_running):
-            st.session_state.simulator.start_simulation()
-            st.success("Simulation started!")
-            st.rerun()
-    
-    with col2:
-        if st.button("⏹️ Stop", disabled=not st.session_state.simulator.is_running):
-            st.session_state.simulator.stop_simulation()
-            st.success("Simulation stopped!")
-            st.rerun()
-    
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        if st.button("⏸️ Pause", disabled=not st.session_state.simulator.is_running or st.session_state.simulator.is_paused):
-            st.session_state.simulator.pause_simulation()
-            st.info("Simulation paused!")
-            st.rerun()
-    
-    with col4:
-        if st.button("▶️ Resume", disabled=not st.session_state.simulator.is_paused):
-            st.session_state.simulator.resume_simulation()
-            st.success("Simulation resumed!")
-            st.rerun()
-    
-    # Status indicators
+    # Quick prediction generation
     st.markdown("---")
-    st.markdown("**Status:**")
-    if st.session_state.simulator.is_running:
-        if st.session_state.simulator.is_paused:
-            st.warning("⏸️ Paused")
-        else:
-            st.success("▶️ Running")
-    else:
-        st.info("⏹️ Stopped")
+    st.markdown("**Quick Actions:**")
     
-    # Current round info
-    if st.session_state.simulator.current_round > 0:
-        st.metric("Current Round", st.session_state.simulator.current_round)
+    if st.button("🔮 Generate Forecast", type="primary"):
+        try:
+            st.session_state.forecast_predictions = st.session_state.simulator.generate_5min_forecast()
+            st.success("Forecast generated!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error: {e}")
+    
+    if st.session_state.forecast_predictions:
+        st.metric("Active Predictions", len(st.session_state.forecast_predictions))
+        if st.button("🗑️ Clear Forecast"):
+            st.session_state.forecast_predictions = []
+            st.rerun()
     
     # Configuration section
     st.markdown("---")
@@ -113,50 +88,68 @@ with st.sidebar:
             st.success("Configuration updated!")
             st.rerun()
 
-# Main dashboard area
-if st.session_state.simulator.is_running and not st.session_state.simulator.is_paused:
-    # Auto-refresh for real-time updates
-    time.sleep(0.5)
-    st.rerun()
 
-# Current multiplier display
-if st.session_state.simulator.current_multiplier > 1.0:
-    create_multiplier_display(
-        st.session_state.simulator.current_multiplier,
-        st.session_state.simulator.crash_time,
-        st.session_state.simulator.round_start_time
-    )
+
+# Dashboard welcome message
+st.markdown("### Welcome to the Crash Predictor")
+st.markdown("Generate crash multiplier predictions and provide feedback to improve accuracy over time.")
 
 # Tabs for different views
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Real-time", "📅 Predictions", "📝 Feedback", "📈 Trends", "📋 Statistics", "📂 Historical"])
 
 with tab1:
-    st.header("Real-time Simulation Data")
+    st.header("Dashboard Overview")
     
-    # Real-time stats
+    # Instructions
+    st.markdown("""
+    ### How to Use the Crash Predictor
+    
+    1. **Generate Predictions** - Use the "Predictions" tab or sidebar button to create 5-minute forecasts
+    2. **Provide Feedback** - Enter real crash data in the "Feedback" tab to improve predictions
+    3. **Analyze Results** - View trends and statistics to understand prediction accuracy
+    """)
+    
+    # Show current status
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.session_state.forecast_predictions:
+            st.metric("Active Predictions", len(st.session_state.forecast_predictions))
+        else:
+            st.metric("Active Predictions", "0")
+    
+    with col2:
+        feedback_count = len(st.session_state.real_time_data[
+            st.session_state.real_time_data['phase'] == 'real_result'
+        ]) if not st.session_state.real_time_data.empty else 0
+        st.metric("Feedback Entries", feedback_count)
+    
+    with col3:
+        if st.session_state.forecast_predictions:
+            avg_prediction = sum(p['predicted_multiplier'] for p in st.session_state.forecast_predictions) / len(st.session_state.forecast_predictions)
+            st.metric("Avg Prediction", f"{avg_prediction:.2f}x")
+        else:
+            st.metric("Avg Prediction", "—")
+    
+    # Show recent activity if available
     if not st.session_state.real_time_data.empty:
-        current_stats = st.session_state.simulator.get_session_stats()
-        create_stats_cards(current_stats)
+        st.subheader("Recent Activity")
         
-        col1, col2 = st.columns([2, 1])
+        feedback_data = st.session_state.real_time_data[
+            st.session_state.real_time_data['phase'] == 'real_result'
+        ].tail(5).copy()
         
-        with col1:
-            # Real-time chart
-            create_real_time_chart(st.session_state.real_time_data)
-            
-            # Recent rounds table
-            st.subheader("Recent Rounds")
-            if len(st.session_state.real_time_data) > 0:
-                recent_data = st.session_state.real_time_data.tail(10).copy()
-                recent_data['timestamp'] = pd.to_datetime(recent_data['timestamp']).dt.strftime('%H:%M:%S')
-                recent_data['multiplier'] = recent_data['multiplier'].round(2)
-                st.dataframe(recent_data[['timestamp', 'round', 'multiplier', 'phase']].sort_values('round', ascending=False), use_container_width=True)
-        
-        with col2:
-            # Category breakdown
-            create_category_breakdown(current_stats)
+        if not feedback_data.empty:
+            feedback_data['timestamp'] = pd.to_datetime(feedback_data['timestamp']).dt.strftime('%H:%M:%S')
+            feedback_data['multiplier'] = feedback_data['multiplier'].round(2)
+            st.dataframe(
+                feedback_data[['timestamp', 'multiplier']].sort_values('timestamp', ascending=False), 
+                use_container_width=True
+            )
+        else:
+            st.info("No feedback data yet. Start by generating predictions and providing feedback.")
     else:
-        st.info("Start the simulation to see real-time data")
+        st.info("Get started by generating your first predictions in the Predictions tab.")
 
 with tab2:
     st.header("5-Minute Predictions")
