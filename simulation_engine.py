@@ -405,6 +405,20 @@ class CrashSimulator:
         """Update simulation configuration"""
         global CONFIG
         CONFIG.update(new_config)
+    
+    @staticmethod
+    def get_multiplier_color_category(multiplier):
+        """Get color category for multiplier display"""
+        if multiplier < 2.00: 
+            return "grey"
+        elif multiplier < 3.00: 
+            return "green"
+        elif multiplier < 4.00: 
+            return "purple"
+        elif multiplier < 10.00: 
+            return "yellow"
+        else: 
+            return "cyan"
 
     @staticmethod
     def get_multiplier_color_category(multiplier):
