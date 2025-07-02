@@ -419,6 +419,68 @@ class CrashSimulator:
             return "yellow"
         else: 
             return "cyan"
+    
+    def generate_5min_forecast(self):
+        """Generate 5-minute forecast predictions"""
+        current_time = datetime.now()
+        predictions = []
+        temp_time = current_time
+        
+        # Generate predictions for the next 5 minutes
+        end_time = current_time + timedelta(minutes=CONFIG['simulation']['forecast_duration_minutes'])
+        round_number = 1
+        
+        while temp_time < end_time:
+            # Generate multiplier prediction
+            multiplier = self._generate_multiplier(temp_time)
+            
+            # Generate crash time prediction
+            crash_time = self._generate_crash_time(temp_time, multiplier)
+            
+            # Store prediction
+            prediction = {
+                'round': round_number,
+                'start_time': temp_time,
+                'predicted_multiplier': multiplier,
+                'predicted_crash_time': crash_time,
+                'timestamp': temp_time.isoformat()
+            }
+            predictions.append(prediction)
+            
+            # Move to next round
+            temp_time = crash_time + timedelta(seconds=CONFIG['simulation']['pause_between_rounds_seconds'])
+            round_number += 1
+        
+        return predictions
+    
+    def apply_real_result(self, real_multiplier, real_crash_time=None):
+        """Apply real result feedback to improve predictions"""
+        current_time = datetime.now()
+        
+        # Update trends
+        self._update_all_trends(real_multiplier, current_time)
+        
+        # Log the real result
+        result_data = {
+            'timestamp': current_time.isoformat(),
+            'round': self.current_round + 1,
+            'multiplier': real_multiplier,
+            'crash_time': real_crash_time.isoformat() if real_crash_time else None,
+            'duration_seconds': (real_crash_time - current_time).total_seconds() if real_crash_time else None,
+            'phase': 'real_result',
+            'compensation': False
+        }
+        
+        # Log to CSV
+        self._log_to_csv(result_data)
+        
+        # Add to session data
+        self.session_data.append(result_data)
+        
+        # Notify callbacks
+        self._notify_callbacks(result_data)
+        
+        return result_data
 
     @staticmethod
     def get_multiplier_color_category(multiplier):

@@ -299,3 +299,101 @@ def create_configuration_panel(current_config):
             'bad_phase_low_mult_chance': bad_phase_chance,
         }
     }
+
+def create_5min_forecast_display(predictions):
+    """Create 5-minute forecast display"""
+    if not predictions:
+        st.info("No predictions available. Generate a forecast to see predictions.")
+        return
+    
+    st.subheader("📅 5-Minute Forecast")
+    
+    # Create a DataFrame for display
+    forecast_df = pd.DataFrame(predictions)
+    
+    # Format times for display
+    forecast_df['start_time_display'] = pd.to_datetime(forecast_df['timestamp']).dt.strftime('%H:%M:%S')
+    forecast_df['predicted_crash_time_display'] = pd.to_datetime(
+        forecast_df['predicted_crash_time']).dt.strftime('%H:%M:%S')
+    
+    # Color code multipliers
+    def get_multiplier_style(mult):
+        if mult < 2.0:
+            return "background-color: #808080; color: white;"
+        elif mult < 3.0:
+            return "background-color: #00FF00; color: black;"
+        elif mult < 4.0:
+            return "background-color: #800080; color: white;"
+        elif mult < 10.0:
+            return "background-color: #FFD700; color: black;"
+        else:
+            return "background-color: #00FFFF; color: black;"
+    
+    # Display forecast table
+    display_df = forecast_df[['round', 'start_time_display', 'predicted_multiplier', 'predicted_crash_time_display']].copy()
+    display_df.columns = ['Round', 'Start Time', 'Predicted Multiplier', 'Predicted Crash Time']
+    display_df['Predicted Multiplier'] = display_df['Predicted Multiplier'].round(2)
+    
+    st.dataframe(display_df, use_container_width=True)
+    
+    # Create forecast chart
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=forecast_df['round'],
+        y=forecast_df['predicted_multiplier'],
+        mode='lines+markers',
+        name='Predicted Multipliers',
+        line=dict(color='orange', width=3),
+        marker=dict(size=8, color='orange')
+    ))
+    
+    # Add threshold lines
+    fig.add_hline(y=2.0, line_dash="dash", line_color="green", annotation_text="2.0x")
+    fig.add_hline(y=4.0, line_dash="dash", line_color="yellow", annotation_text="4.0x")
+    fig.add_hline(y=10.0, line_dash="dash", line_color="cyan", annotation_text="10.0x")
+    
+    fig.update_layout(
+        title="5-Minute Forecast Predictions",
+        xaxis_title="Round",
+        yaxis_title="Predicted Multiplier",
+        height=400
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+def create_real_result_input():
+    """Create real result input form"""
+    st.subheader("📝 Enter Real Result")
+    
+    with st.form("real_result_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            real_multiplier = st.number_input(
+                "Real Multiplier", 
+                min_value=1.0, 
+                max_value=100.0, 
+                value=1.0, 
+                step=0.01,
+                format="%.2f"
+            )
+        
+        with col2:
+            crash_time = st.time_input(
+                "Crash Time (optional)", 
+                value=datetime.now().time()
+            )
+        
+        include_crash_time = st.checkbox("Include crash time in feedback")
+        
+        submitted = st.form_submit_button("Submit Real Result", type="primary")
+        
+        if submitted:
+            return {
+                'multiplier': real_multiplier,
+                'crash_time': crash_time if include_crash_time else None,
+                'include_crash_time': include_crash_time
+            }
+    
+    return None

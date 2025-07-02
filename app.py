@@ -9,7 +9,8 @@ from simulation_engine import CrashSimulator, CONFIG
 from dashboard_components import (
     create_multiplier_display, create_trend_chart, create_distribution_chart,
     create_phase_analysis_chart, create_real_time_chart, create_stats_cards,
-    create_category_breakdown, create_configuration_panel
+    create_category_breakdown, create_configuration_panel,
+    create_5min_forecast_display, create_real_result_input
 )
 from data_manager import DataManager
 
@@ -27,6 +28,7 @@ if 'simulator' not in st.session_state:
     st.session_state.data_manager = DataManager()
     st.session_state.real_time_data = pd.DataFrame()
     st.session_state.update_counter = 0
+    st.session_state.forecast_predictions = []
 
 def simulation_callback(data):
     """Callback function for simulation updates"""
@@ -126,7 +128,7 @@ if st.session_state.simulator.current_multiplier > 1.0:
     )
 
 # Tabs for different views
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Real-time", "📈 Trends", "📋 Statistics", "📂 Historical", "⚙️ Analysis"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Real-time", "📅 Predictions", "📝 Feedback", "📈 Trends", "📋 Statistics", "📂 Historical"])
 
 with tab1:
     st.header("Real-time Simulation Data")
@@ -157,6 +159,111 @@ with tab1:
         st.info("Start the simulation to see real-time data")
 
 with tab2:
+    st.header("5-Minute Predictions")
+    
+    # Generate forecast button
+    if st.button("🔮 Generate 5-Minute Forecast", type="primary"):
+        try:
+            st.session_state.forecast_predictions = st.session_state.simulator.generate_5min_forecast()
+            st.success("Forecast generated successfully!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error generating forecast: {e}")
+    
+    # Display current forecast
+    if st.session_state.forecast_predictions:
+        create_5min_forecast_display(st.session_state.forecast_predictions)
+        
+        # Clear forecast button
+        if st.button("🗑️ Clear Forecast"):
+            st.session_state.forecast_predictions = []
+            st.rerun()
+    else:
+        st.info("Click 'Generate 5-Minute Forecast' to see predictions based on your simulation algorithm.")
+
+with tab3:
+    st.header("Real Result Feedback")
+    
+    # Real result input form
+    result_input = create_real_result_input()
+    
+    if result_input:
+        try:
+            real_multiplier = result_input['multiplier']
+            crash_time = None
+            
+            if result_input['include_crash_time'] and result_input['crash_time']:
+                # Combine today's date with the crash time
+                today = datetime.now().date()
+                crash_time = datetime.combine(today, result_input['crash_time'])
+            
+            # Apply the real result to improve predictions
+            feedback_result = st.session_state.simulator.apply_real_result(real_multiplier, crash_time)
+            
+            st.success(f"Real result recorded: {real_multiplier:.2f}x")
+            
+            # Display feedback analysis
+            st.subheader("Feedback Analysis")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("Multiplier Recorded", f"{real_multiplier:.2f}x")
+                if crash_time:
+                    st.metric("Crash Time", crash_time.strftime('%H:%M:%S'))
+            
+            with col2:
+                # Get multiplier category
+                category = st.session_state.simulator.get_multiplier_color_category(real_multiplier)
+                st.metric("Category", category.title())
+                
+                # Calculate if this improves learning
+                st.info("This feedback will improve future predictions by updating the simulation's learning algorithms.")
+            
+            # Show how this compares to recent predictions
+            if st.session_state.forecast_predictions:
+                st.subheader("Comparison with Recent Predictions")
+                
+                recent_pred_df = pd.DataFrame(st.session_state.forecast_predictions)
+                if not recent_pred_df.empty:
+                    avg_prediction = recent_pred_df['predicted_multiplier'].mean()
+                    
+                    difference = real_multiplier - avg_prediction
+                    if abs(difference) < 0.5:
+                        st.success(f"Close prediction! Difference: {difference:+.2f}x")
+                    elif difference > 0:
+                        st.warning(f"Real result higher than predicted: {difference:+.2f}x")
+                    else:
+                        st.warning(f"Real result lower than predicted: {difference:+.2f}x")
+            
+        except Exception as e:
+            st.error(f"Error processing real result: {e}")
+    
+    # Display recent feedback history
+    st.subheader("Recent Feedback History")
+    
+    # Filter real results from session data
+    if not st.session_state.real_time_data.empty:
+        real_results = st.session_state.real_time_data[
+            st.session_state.real_time_data['phase'] == 'real_result'
+        ].copy()
+        
+        if not real_results.empty:
+            # Format display
+            real_results['timestamp_display'] = pd.to_datetime(real_results['timestamp']).dt.strftime('%H:%M:%S')
+            display_cols = ['timestamp_display', 'multiplier', 'crash_time']
+            available_cols = [col for col in display_cols if col in real_results.columns]
+            
+            st.dataframe(
+                real_results[available_cols].tail(10).sort_values('timestamp_display', ascending=False),
+                use_container_width=True
+            )
+        else:
+            st.info("No real results entered yet. Use the form above to provide feedback.")
+    else:
+        st.info("No feedback data available yet.")
+
+with tab4:
     st.header("Trend Analysis")
     
     # Data source selector
