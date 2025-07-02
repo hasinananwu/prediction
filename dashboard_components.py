@@ -300,53 +300,172 @@ def create_configuration_panel(current_config):
         }
     }
 
+def get_multiplier_ball(multiplier):
+    """Return colored ball emoji based on multiplier value"""
+    if multiplier < 1.51:
+        return "🔴"  # Red
+    elif 1.51 <= multiplier < 2.00:
+        return "🟠"  # Orange
+    elif 2.00 <= multiplier < 3.00:
+        return "🟢"  # Green
+    elif 3.00 <= multiplier < 4.00:
+        return "🟡"  # Yellow
+    elif 4.00 <= multiplier < 10.00:
+        return "🟣"  # Purple
+    else:  # >= 10.00
+        return "🔵"  # Blue
+
+def get_multiplier_color(multiplier):
+    """Return background color based on multiplier value"""
+    if multiplier < 1.51:
+        return "#FF6B6B"  # Red
+    elif 1.51 <= multiplier < 2.00:
+        return "#FF8E53"  # Orange
+    elif 2.00 <= multiplier < 3.00:
+        return "#51CF66"  # Green
+    elif 3.00 <= multiplier < 4.00:
+        return "#FFD43B"  # Yellow
+    elif 4.00 <= multiplier < 10.00:
+        return "#9775FA"  # Purple
+    else:  # >= 10.00
+        return "#74C0FC"  # Blue
+
 def create_5min_forecast_display(predictions):
-    """Create 5-minute forecast display"""
+    """Create enhanced 5-minute forecast display with editable results"""
     if not predictions:
         st.info("No predictions available. Generate a forecast to see predictions.")
         return
     
     st.subheader("📅 5-Minute Forecast")
     
+    # Trend adjustment controls
+    st.markdown("**Trend Adjustment:**")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        trend_adjustment = st.selectbox(
+            "Current Trend",
+            ["Auto", "Force Higher", "Force Lower", "Force Mixed"],
+            help="Adjust the prediction trend for upcoming rounds"
+        )
+    
+    with col2:
+        strength = st.slider("Adjustment Strength", 0.1, 2.0, 1.0, 0.1)
+    
+    with col3:
+        if st.button("Apply Trend Adjustment"):
+            # Apply the trend adjustment to the simulator
+            import streamlit as st
+            if 'simulator' in st.session_state:
+                st.session_state.simulator.set_trend_adjustment(trend_adjustment, strength)
+                st.success("Trend adjustment applied to future predictions!")
+            else:
+                st.error("Simulator not available")
+    
+    st.markdown("---")
+    
     # Create a DataFrame for display
     forecast_df = pd.DataFrame(predictions)
     
-    # Format times for display
-    forecast_df['start_time_display'] = pd.to_datetime(forecast_df['timestamp']).dt.strftime('%H:%M:%S')
+    # Group by minute for background coloring
+    forecast_df['start_time_dt'] = pd.to_datetime(forecast_df['timestamp'])
+    forecast_df['minute'] = forecast_df['start_time_dt'].dt.minute
+    forecast_df['start_time_display'] = forecast_df['start_time_dt'].dt.strftime('%H:%M:%S')
     forecast_df['predicted_crash_time_display'] = pd.to_datetime(
         forecast_df['predicted_crash_time']).dt.strftime('%H:%M:%S')
     
-    # Color code multipliers
-    def get_multiplier_style(mult):
-        if mult < 2.0:
-            return "background-color: #808080; color: white;"
-        elif mult < 3.0:
-            return "background-color: #00FF00; color: black;"
-        elif mult < 4.0:
-            return "background-color: #800080; color: white;"
-        elif mult < 10.0:
-            return "background-color: #FFD700; color: black;"
-        else:
-            return "background-color: #00FFFF; color: black;"
+    # Display predictions grouped by minute with editable results
+    unique_minutes = forecast_df['minute'].unique()
     
-    # Display forecast table
-    display_df = forecast_df[['round', 'start_time_display', 'predicted_multiplier', 'predicted_crash_time_display']].copy()
-    display_df.columns = ['Round', 'Start Time', 'Predicted Multiplier', 'Predicted Crash Time']
-    display_df['Predicted Multiplier'] = display_df['Predicted Multiplier'].round(2)
-    
-    st.dataframe(display_df, use_container_width=True)
+    for i, minute in enumerate(unique_minutes):
+        minute_data = forecast_df[forecast_df['minute'] == minute].copy()
+        
+        # Alternate background colors for different minutes
+        bg_color = "#F8F9FA" if i % 2 == 0 else "#E9ECEF"
+        
+        st.markdown(f"""
+        <div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; margin: 10px 0;">
+            <h4 style="margin: 0 0 10px 0;">Minute: {minute:02d}</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Display each prediction in this minute
+        for _, row in minute_data.iterrows():
+            col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 2])
+            
+            with col1:
+                st.write(f"**Start:** {row['start_time_display']}")
+            
+            with col2:
+                st.write(f"**Predicted:** {row['predicted_crash_time_display']}")
+            
+            with col3:
+                ball = get_multiplier_ball(row['predicted_multiplier'])
+                color = get_multiplier_color(row['predicted_multiplier'])
+                st.markdown(f"""
+                <div style="background-color: {color}; padding: 8px; border-radius: 20px; text-align: center; color: white; font-weight: bold;">
+                    {ball} {row['predicted_multiplier']:.2f}x
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col4:
+                # Editable real result input
+                real_multiplier = st.number_input(
+                    "Real Result",
+                    min_value=1.0,
+                    max_value=100.0,
+                    value=1.0,
+                    step=0.01,
+                    key=f"real_mult_{row['round']}",
+                    help="Enter the actual multiplier result"
+                )
+            
+            with col5:
+                if st.button("✓ Submit", key=f"submit_{row['round']}", type="secondary"):
+                    # Apply the real result
+                    st.session_state[f"submitted_{row['round']}"] = {
+                        'real_multiplier': real_multiplier,
+                        'predicted_multiplier': row['predicted_multiplier'],
+                        'timestamp': row['timestamp']
+                    }
+                    st.success(f"Result submitted: {real_multiplier:.2f}x")
+                    st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
     
     # Create forecast chart
     fig = go.Figure()
     
+    # Add prediction line
     fig.add_trace(go.Scatter(
         x=forecast_df['round'],
         y=forecast_df['predicted_multiplier'],
         mode='lines+markers',
         name='Predicted Multipliers',
         line=dict(color='orange', width=3),
-        marker=dict(size=8, color='orange')
+        marker=dict(size=10, color='orange')
     ))
+    
+    # Add submitted real results if any
+    submitted_data = []
+    for _, row in forecast_df.iterrows():
+        if f"submitted_{row['round']}" in st.session_state:
+            submitted = st.session_state[f"submitted_{row['round']}"]
+            submitted_data.append({
+                'round': row['round'],
+                'real_multiplier': submitted['real_multiplier'],
+                'predicted_multiplier': submitted['predicted_multiplier']
+            })
+    
+    if submitted_data:
+        submitted_df = pd.DataFrame(submitted_data)
+        fig.add_trace(go.Scatter(
+            x=submitted_df['round'],
+            y=submitted_df['real_multiplier'],
+            mode='markers',
+            name='Real Results',
+            marker=dict(size=12, color='red', symbol='x')
+        ))
     
     # Add threshold lines
     fig.add_hline(y=2.0, line_dash="dash", line_color="green", annotation_text="2.0x")
@@ -354,13 +473,31 @@ def create_5min_forecast_display(predictions):
     fig.add_hline(y=10.0, line_dash="dash", line_color="cyan", annotation_text="10.0x")
     
     fig.update_layout(
-        title="5-Minute Forecast Predictions",
+        title="5-Minute Forecast vs Real Results",
         xaxis_title="Round",
-        yaxis_title="Predicted Multiplier",
-        height=400
+        yaxis_title="Multiplier",
+        height=400,
+        showlegend=True
     )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Show accuracy summary if we have submitted results
+    if submitted_data:
+        st.subheader("Accuracy Summary")
+        submitted_df = pd.DataFrame(submitted_data)
+        submitted_df['error'] = abs(submitted_df['real_multiplier'] - submitted_df['predicted_multiplier'])
+        submitted_df['accuracy'] = 100 - (submitted_df['error'] / submitted_df['real_multiplier'] * 100)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Average Error", f"{submitted_df['error'].mean():.2f}x")
+        with col2:
+            st.metric("Average Accuracy", f"{submitted_df['accuracy'].mean():.1f}%")
+        with col3:
+            st.metric("Results Submitted", len(submitted_data))
+    
+    return submitted_data
 
 def create_real_result_input():
     """Create real result input form"""

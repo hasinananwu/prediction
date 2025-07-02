@@ -76,6 +76,8 @@ class CrashSimulator:
         self.crash_time = None
         self.round_start_time = None
         self.callbacks = []
+        self.trend_adjustment = "Auto"
+        self.trend_strength = 1.0
         
     def add_callback(self, callback):
         """Add callback function to be called on each simulation update"""
@@ -420,6 +422,35 @@ class CrashSimulator:
         else: 
             return "cyan"
     
+    def set_trend_adjustment(self, trend_type, strength):
+        """Set trend adjustment for future predictions"""
+        self.trend_adjustment = trend_type
+        self.trend_strength = strength
+    
+    def _apply_trend_adjustment(self, base_multiplier):
+        """Apply trend adjustment to base multiplier"""
+        if self.trend_adjustment == "Auto":
+            return base_multiplier
+        elif self.trend_adjustment == "Force Higher":
+            # Increase multiplier based on strength
+            adjustment = (base_multiplier * 0.5 * self.trend_strength)
+            return min(base_multiplier + adjustment, 50.0)  # Cap at 50x
+        elif self.trend_adjustment == "Force Lower":
+            # Decrease multiplier based on strength
+            adjustment = (base_multiplier * 0.3 * self.trend_strength)
+            return max(base_multiplier - adjustment, 1.01)  # Floor at 1.01x
+        elif self.trend_adjustment == "Force Mixed":
+            # Alternate between higher and lower
+            import random
+            if random.random() > 0.5:
+                adjustment = (base_multiplier * 0.3 * self.trend_strength)
+                return min(base_multiplier + adjustment, 30.0)
+            else:
+                adjustment = (base_multiplier * 0.2 * self.trend_strength)
+                return max(base_multiplier - adjustment, 1.01)
+        
+        return base_multiplier
+
     def generate_5min_forecast(self):
         """Generate 5-minute forecast predictions"""
         current_time = datetime.now()
@@ -431,8 +462,11 @@ class CrashSimulator:
         round_number = 1
         
         while temp_time < end_time:
-            # Generate multiplier prediction
-            multiplier = self._generate_multiplier(temp_time)
+            # Generate base multiplier prediction
+            base_multiplier = self._generate_multiplier(temp_time)
+            
+            # Apply trend adjustment
+            multiplier = self._apply_trend_adjustment(base_multiplier)
             
             # Generate crash time prediction
             crash_time = self._generate_crash_time(temp_time, multiplier)

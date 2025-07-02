@@ -155,22 +155,43 @@ with tab2:
     st.header("5-Minute Predictions")
     
     # Generate forecast button
-    if st.button("🔮 Generate 5-Minute Forecast", type="primary"):
-        try:
-            st.session_state.forecast_predictions = st.session_state.simulator.generate_5min_forecast()
-            st.success("Forecast generated successfully!")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error generating forecast: {e}")
+    col1, col2 = st.columns([3, 1])
     
-    # Display current forecast
+    with col1:
+        if st.button("🔮 Generate 5-Minute Forecast", type="primary"):
+            try:
+                st.session_state.forecast_predictions = st.session_state.simulator.generate_5min_forecast()
+                st.success("Forecast generated successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error generating forecast: {e}")
+    
+    with col2:
+        if st.session_state.forecast_predictions:
+            if st.button("🗑️ Clear Forecast"):
+                st.session_state.forecast_predictions = []
+                # Clear all submitted results
+                keys_to_remove = [key for key in st.session_state.keys() if key.startswith("submitted_")]
+                for key in keys_to_remove:
+                    del st.session_state[key]
+                st.rerun()
+    
+    # Display current forecast with enhanced features
     if st.session_state.forecast_predictions:
-        create_5min_forecast_display(st.session_state.forecast_predictions)
+        # The enhanced display handles trend adjustment and editable results
+        submitted_data = create_5min_forecast_display(st.session_state.forecast_predictions)
         
-        # Clear forecast button
-        if st.button("🗑️ Clear Forecast"):
-            st.session_state.forecast_predictions = []
-            st.rerun()
+        # Process submitted results for learning
+        if submitted_data:
+            for result in submitted_data:
+                try:
+                    # Apply the real result to the simulator for learning
+                    st.session_state.simulator.apply_real_result(
+                        result['real_multiplier'], 
+                        None  # No crash time provided in this interface
+                    )
+                except Exception as e:
+                    st.error(f"Error processing result: {e}")
     else:
         st.info("Click 'Generate 5-Minute Forecast' to see predictions based on your simulation algorithm.")
 
