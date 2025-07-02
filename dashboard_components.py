@@ -332,6 +332,8 @@ def get_multiplier_color(multiplier):
 
 def create_5min_forecast_display(predictions):
     """Create enhanced 5-minute forecast display with editable results"""
+    import streamlit as st
+    
     if not predictions:
         st.info("No predictions available. Generate a forecast to see predictions.")
         return
@@ -355,7 +357,6 @@ def create_5min_forecast_display(predictions):
     with col3:
         if st.button("Apply Trend Adjustment"):
             # Apply the trend adjustment to the simulator
-            import streamlit as st
             if 'simulator' in st.session_state:
                 st.session_state.simulator.set_trend_adjustment(trend_adjustment, strength)
                 st.success("Trend adjustment applied to future predictions!")
