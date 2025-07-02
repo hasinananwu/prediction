@@ -28,6 +28,12 @@ class DataManager:
             return data
         
         cutoff_time = datetime.now() - timedelta(hours=hours_back)
+        
+        # Convert timestamp column to datetime if it's string
+        if 'timestamp' in data.columns:
+            if data['timestamp'].dtype == 'object':
+                data['timestamp'] = pd.to_datetime(data['timestamp'])
+        
         return data[data['timestamp'] >= cutoff_time]
     
     def filter_data_by_date_range(self, data, start_date, end_date):

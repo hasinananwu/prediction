@@ -392,22 +392,37 @@ def create_5min_forecast_display(predictions):
         
         # Display each prediction in this minute
         for _, row in minute_data.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 2])
+            col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 2, 2, 1.5])
             
             with col1:
-                st.write(f"**Start:** {row['start_time_display']}")
+                # Editable start time
+                start_time_input = st.time_input(
+                    "Start Time",
+                    value=row['start_time'].time(),
+                    key=f"start_time_{row['round']}",
+                    help="Edit the start time"
+                )
             
             with col2:
-                st.write(f"**Predicted:** {row['predicted_crash_time_display']}")
+                # Editable predicted crash time
+                predicted_time_input = st.time_input(
+                    "Predicted Time", 
+                    value=row['predicted_crash_time'].time(),
+                    key=f"pred_time_{row['round']}",
+                    help="Edit the predicted crash time"
+                )
             
             with col3:
-                ball = get_multiplier_ball(row['predicted_multiplier'])
-                color = get_multiplier_color(row['predicted_multiplier'])
-                st.markdown(f"""
-                <div style="background-color: {color}; padding: 8px; border-radius: 20px; text-align: center; color: white; font-weight: bold;">
-                    {ball} {row['predicted_multiplier']:.2f}x
-                </div>
-                """, unsafe_allow_html=True)
+                # Editable predicted multiplier
+                predicted_multiplier = st.number_input(
+                    "Predicted Mult",
+                    min_value=1.0,
+                    max_value=100.0,
+                    value=float(row['predicted_multiplier']),
+                    step=0.01,
+                    key=f"pred_mult_{row['round']}",
+                    help="Edit the predicted multiplier"
+                )
             
             with col4:
                 # Editable real result input
@@ -422,11 +437,23 @@ def create_5min_forecast_display(predictions):
                 )
             
             with col5:
+                # Display colored multiplier ball for visual reference
+                ball = get_multiplier_ball(predicted_multiplier)
+                color = get_multiplier_color(predicted_multiplier)
+                st.markdown(f"""
+                <div style="background-color: {color}; padding: 4px; border-radius: 15px; text-align: center; color: white; font-weight: bold; font-size: 0.8em; margin-top: 25px;">
+                    {ball} {predicted_multiplier:.2f}x
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col6:
                 if st.button("✓ Submit", key=f"submit_{row['round']}", type="secondary"):
-                    # Apply the real result
+                    # Apply the real result with all editable fields
                     st.session_state[f"submitted_{row['round']}"] = {
                         'real_multiplier': real_multiplier,
-                        'predicted_multiplier': row['predicted_multiplier'],
+                        'predicted_multiplier': predicted_multiplier,
+                        'start_time': start_time_input,
+                        'predicted_time': predicted_time_input,
                         'timestamp': row['timestamp']
                     }
                     st.success(f"Result submitted: {real_multiplier:.2f}x")
