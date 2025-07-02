@@ -39,3 +39,5 @@ timestamp,round,multiplier,crash_time,duration_seconds,phase,compensation
 2025-07-02T14:56:09.285365,1,1.0,,,real_result,False
 2025-07-02T14:56:09.593730,1,1.0,,,real_result,False
 2025-07-02T14:56:09.596205,1,1.9,,,real_result,False
+2025-07-02T20:14:57.064804,1,1.0,,,real_result,False
+2025-07-02T20:16:29.032954,1,1.0,,,real_result,False
