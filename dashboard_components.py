@@ -330,6 +330,74 @@ def get_multiplier_color(multiplier):
     else:  # >= 10.00
         return "#74C0FC"  # Blue
 
+def create_phase_indicator():
+    """Create current phase indicator and editor"""
+    import streamlit as st
+    from datetime import datetime
+    
+    current_time = datetime.now()
+    hour = current_time.hour
+    minute = current_time.minute
+    second = current_time.second
+    
+    # Determine current phase
+    if hour in [9, 10, 14, 15, 20, 21]:
+        phase = "Peak Hours"
+        phase_color = "#ff4b4b"
+    elif hour in [11, 12, 13, 16, 17, 18, 19]:
+        phase = "Medium Hours"
+        phase_color = "#ff8c00"
+    else:
+        phase = "Off-Peak Hours"
+        phase_color = "#1f77b4"
+    
+    # Quarter hour phase
+    quarter = minute // 15
+    if quarter == 0:
+        quarter_phase = "First Quarter (0-14 min)"
+    elif quarter == 3:
+        quarter_phase = "Last Quarter (45-59 min)"
+    else:
+        quarter_phase = "Middle Quarter (15-44 min)"
+    
+    # Minute special patterns
+    minute_pattern = "Regular"
+    if minute % 10 == 9:
+        if second < 30:
+            minute_pattern = "Special 9 Early (Catastrophic Risk)"
+        else:
+            minute_pattern = "Special 9 Late"
+    elif minute % 10 == 1:
+        if second < 30:
+            minute_pattern = "Special 1 Early"
+        else:
+            minute_pattern = "Special 1 Late"
+    elif minute % 7 == 0:
+        minute_pattern = "Multiple of 7 (Catastrophic Risk)"
+    elif minute % 5 == 0:
+        minute_pattern = "Multiple of 5"
+    elif minute % 3 == 0:
+        minute_pattern = "Multiple of 3"
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {phase_color}22, {phase_color}11); padding: 15px; border-radius: 10px; border-left: 4px solid {phase_color}; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 10px 0; color: {phase_color};">📍 Current Phase Analysis</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <div><strong>Time:</strong> {current_time.strftime('%H:%M:%S')}</div>
+            <div><strong>Hour Phase:</strong> {phase}</div>
+            <div><strong>Quarter Phase:</strong> {quarter_phase}</div>
+            <div><strong>Minute Pattern:</strong> {minute_pattern}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    return {
+        'current_time': current_time,
+        'phase': phase,
+        'quarter_phase': quarter_phase,
+        'minute_pattern': minute_pattern
+    }
+
 def create_5min_forecast_display(predictions):
     """Create enhanced 5-minute forecast display with editable results"""
     import streamlit as st
@@ -340,9 +408,12 @@ def create_5min_forecast_display(predictions):
     
     st.subheader("📅 5-Minute Forecast")
     
+    # Phase indicator
+    phase_info = create_phase_indicator()
+    
     # Trend adjustment controls
     st.markdown("**Trend Adjustment:**")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         trend_adjustment = st.selectbox(
@@ -355,11 +426,19 @@ def create_5min_forecast_display(predictions):
         strength = st.slider("Adjustment Strength", 0.1, 2.0, 1.0, 0.1)
     
     with col3:
-        if st.button("Apply Trend Adjustment"):
+        # Manual phase override
+        manual_phase = st.selectbox(
+            "Override Phase",
+            ["Auto", "Peak Hours", "Medium Hours", "Off-Peak Hours"],
+            help="Manually override the current phase detection"
+        )
+    
+    with col4:
+        if st.button("Apply Adjustments", type="primary"):
             # Apply the trend adjustment to the simulator
             if 'simulator' in st.session_state:
                 st.session_state.simulator.set_trend_adjustment(trend_adjustment, strength)
-                st.success("Trend adjustment applied to future predictions!")
+                st.success("Adjustments applied to future predictions!")
             else:
                 st.error("Simulator not available")
     
@@ -395,21 +474,23 @@ def create_5min_forecast_display(predictions):
             col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 2, 2, 1.5])
             
             with col1:
-                # Editable start time
-                start_time_input = st.time_input(
-                    "Start Time",
-                    value=row['start_time'].time(),
+                # Editable start time with seconds
+                start_time_display = row['start_time'].strftime("%H:%M:%S")
+                start_time_input = st.text_input(
+                    "Start Time (HH:MM:SS)",
+                    value=start_time_display,
                     key=f"start_time_{row['round']}",
-                    help="Edit the start time"
+                    help="Edit the start time (format: HH:MM:SS)"
                 )
             
             with col2:
-                # Editable predicted crash time
-                predicted_time_input = st.time_input(
-                    "Predicted Time", 
-                    value=row['predicted_crash_time'].time(),
+                # Editable predicted crash time with seconds
+                predicted_time_display = row['predicted_crash_time'].strftime("%H:%M:%S")
+                predicted_time_input = st.text_input(
+                    "Predicted Time (HH:MM:SS)", 
+                    value=predicted_time_display,
                     key=f"pred_time_{row['round']}",
-                    help="Edit the predicted crash time"
+                    help="Edit the predicted crash time (format: HH:MM:SS)"
                 )
             
             with col3:
