@@ -18,11 +18,20 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "install_deps"
+args = "Streamlit Dashboard"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Original Style Dashboard"
+args = "install_deps"
+
+[[workflows.workflow]]
+name = "Streamlit Dashboard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run app.py --server.port 5000"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "install_deps"
@@ -31,15 +40,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "uv add plotly pandas numpy"
-
-[[workflows.workflow]]
-name = "Original Style Dashboard"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run app_original_style.py --server.port 5000"
-waitForPort = 5000
 
 [[ports]]
 localPort = 5000
